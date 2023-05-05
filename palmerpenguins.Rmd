@@ -1,0 +1,281 @@
+---
+title: "palmerpenguins"
+author: "A.Carolina Ledezma-Carrizalez"
+date: "2023-05-05"
+output: html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+## Los Palmerpenguins{.tabset} 
+
+### Los Palmerpenguins
+
+Los "palmerpenguins" es un Dataset que contienen medidas de tamaño de tres especies de pingüinos (Adélie, Chinstrap, y Gentoo) observadas en tres islas del archipiélago Palmer, en la Antártida.
+
+Estos datos fueron recolectados entre 2007 y 2009 por la Dra. Kristen Gorman con el Programa de Investigación Ecológica a Largo Plazo de la Estación Palmer, parte de la Red de Investigación Ecológica a Largo Plazo de EE.UU. Los datos se importaron directamente del Portal de datos de la Iniciativa de datos ambientales (EDI) y están disponibles para su uso con
+licencia CC0 ("Sin derechos reservados") de acuerdo con la Política de datos de Palmer Station.
+
+La Estación Palmer ubicada en el Archipiélago Palmer en la Isla Anvers, Antártida, ha estado monitoreando la ecología del área de estudio de Investigación Ecológica a Largo Plazo (LTER) de Palmer durante más de 50 años.
+
+Al estar en la Antártida, naturalmente, uno de sus grandes intereses es monitorear la población local de pingüinos de la que registran datos para comprender la dinámica de su población, las respuestas al cambio
+climático, etc.
+
+### Los Datos
+
+*Los Datos*  
+  
+  El conjunto de datos de pingüinos palmer contiene datos medidos en 333 pingüinos del Archipiélago Palmer. Las variables observadas son:
+  
+  • Species / Especie: La especie del pingüino (Adelie,Chinstrap o Gentoo)
+
+• Island/ Isla: La isla en la que viven los pingüinos (Biscoe, Dream o Torgerson)  
+
+• Bill length mm / Longitud del pico: La longitud del pico del pingüino (en milímetros)  
+
+• Bill depth mm /Profundidad de pico mm: La profundidad del pico del pingüino (en milímetros)  
+
+• Flipper length mm/ Longitud de la aleta mm: La longitud de la aleta del pingüino (en milímetros)  
+
+• Body mass g/ Masa corporal g: la masa corporal del pingüino (en gramos)   
+
+• Sex/Sexo: El sexo del pingüino (macho o hembra)   
+
+
+• Year/Año: El año en que se tomaron las medidas  
+
+
+
+### Relaciones
+
+
+```{r}
+library(palmerpenguins)
+library(ggtext)
+library(colorspace)
+library(ragg)
+library(ggplot2)
+library(tidyverse)
+library(finalfit)
+library(dplyr)
+library(GGally)
+```
+```{r}
+penguins1 <- penguins %>% 
+  na.omit()
+
+sum(is.na(penguins1))
+```
+```{r}
+penguins1%>%
+  ff_glimpse()
+```
+```{r}
+penguins1 %>%
+  dplyr::select(body_mass_g, ends_with("_mm")) %>% 
+  glimpse()
+```
+
+```{r}
+str(penguins1)
+
+```
+
+```{r}
+penguins1 %>%
+  select(species, body_mass_g, ends_with("_mm")) %>% 
+  GGally::ggpairs(aes(color = species)) +
+  theme_minimal()+
+  scale_colour_manual(values = c("darkorange","purple","cyan4")) +
+  scale_fill_manual(values = c("darkorange","purple","cyan4"))
+```
+
+
+### Picos Aletas
+```{r}
+ggplot(data = penguins1, aes(x = species, y = bill_length_mm)) +
+  theme_minimal()+
+  geom_jitter(aes(color = species),
+              width = 0.1, 
+              alpha = 0.7,
+              show.legend = FALSE) +
+  scale_color_manual(values = c("darkorange","darkorchid","cyan4"))
+```
+
+
+
+```{r}
+# Histogram example: flipper length by species
+ggplot(data = penguins1, aes(x = flipper_length_mm)) +
+  theme_minimal()+
+  geom_histogram(aes(fill = species), alpha = 0.5, position = "identity") +
+  scale_fill_manual(values = c("darkorange","darkorchid","cyan4"))
+```
+
+```{r}
+# Scatterplot example 2: penguin bill length versus bill depth
+ggplot(data = penguins1, aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point(aes(color = species, 
+                 shape = species),
+             size = 2)  +
+  theme_minimal()+
+  scale_color_manual(values = c("darkorange","darkorchid","cyan4"))
+```
+
+### Picos Colas
+
+```{r}
+#Traigo mis imagenes 
+url <- "https://raw.githubusercontent.com/allisonhorst/palmerpenguins/master/man/figures/lter_penguins.png"
+img <- magick::image_read((url))
+pic <- grid::rasterGrob(img, interpolate = TRUE)
+
+pal <- c("#FF8C00", "#A034F0", "#159090")
+
+add_sample <- function(x){
+  return(c(y = max(x) + .025, 
+           label = length(x)))
+}
+
+penguins %>% 
+  group_by(species) %>% 
+  mutate(bill_ratio = bill_length_mm / bill_depth_mm) %>% 
+  filter(!is.na(bill_ratio)) %>% 
+  ggplot(aes(x = fct_rev(species), y = bill_ratio)) + 
+  ggdist::stat_halfeye(
+    aes(color = species,
+        fill = after_scale(lighten(color, .5))),
+    adjust = .5, 
+    width = .75, 
+    .width = 0,
+    justification = -.4, 
+    point_color = NA) + 
+  geom_boxplot(
+    aes(color = species,
+        color = after_scale(darken(color, .1, space = "HLS")),
+        fill = after_scale(desaturate(lighten(color, .8), .4))),
+    width = .42, 
+    outlier.shape = NA
+  ) +
+  geom_point(
+    aes(color = species,
+        color = after_scale(darken(color, .1, space = "HLS"))),
+    fill = "white",
+    shape = 21,
+    stroke = .4,
+    size = 2,
+    position = position_jitter(seed = 1, width = .12)
+  ) + 
+  geom_point(
+    aes(fill = species),
+    color = "transparent",
+    shape = 21,
+    stroke = .4,
+    size = 2,
+    alpha = .3,
+    position = position_jitter(seed = 1, width = .12)
+  ) + 
+  stat_summary(
+    geom = "text",
+    fun = "median",
+    aes(label = round(..y.., 2),
+        color = species,
+        color = after_scale(darken(color, .1, space = "HLS"))),
+    family = "Roboto Mono",
+    fontface = "bold",
+    size = 4.5,
+    vjust = -3.5
+  ) +
+  stat_summary(
+    geom = "text",
+    fun.data = add_sample,
+    aes(label = paste("n =", ..label..),
+        color = species,
+        color = after_scale(darken(color, .1, space = "HLS"))),
+    family = "Roboto Condensed",
+    size = 4,
+    hjust = 0
+  ) +
+  coord_flip(xlim = c(1.2, NA), clip = "off") +
+  annotation_custom(pic, ymin = 2.9, ymax = 3.85, xmin = 2.7, xmax = 4.7) +
+  scale_y_continuous(
+    limits = c(1.57, 3.8),
+    breaks = seq(1.6, 3.8, by = .2),
+    expand = c(.001, .001)
+  ) +
+  scale_color_manual(values = pal, guide = "none") +
+  scale_fill_manual(values = pal, guide = "none") +
+  labs(
+    x = NULL,
+    y = "Bill ratio",
+    title = "Bill Ratios of Brush–Tailed Penguins (*Pygoscelis* spec.)",
+    subtitle = "Distribution of bill ratios, estimated as bill length divided by bill depth.",
+    caption = "Gorman, Williams & Fraser (2014) *PLoS ONE* DOI: 10.1371/journal.pone.0090081<br>Visualization: Cédric Scherer  &bull;    Illustration: Allison Horst"
+  ) +
+  theme_minimal(base_family = "Zilla Slab", base_size = 15) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(family = "Roboto Mono"),
+    axis.text.y = element_text(
+      color = rev(darken(pal, .1, space = "HLS")), 
+      size = 18
+    ),
+    axis.title.x = element_text(margin = margin(t = 10),
+                                size = 16),
+    plot.title = element_markdown(face = "bold", size = 21),
+    plot.subtitle = element_text(
+      color = "grey40", hjust = 0,
+      margin = margin(0, 0, 20, 0)
+    ),
+    plot.title.position = "plot",
+    plot.caption = element_markdown(
+      color = "grey40", lineheight = 1.2,
+      margin = margin(20, 0, 0, 0)),
+    plot.margin = margin(15, 15, 10, 15)
+  )
+```
+
+
+### Caracteristicas
+
+```{r}
+library(gt)
+library(patchwork)
+theme_set(theme_light())
+
+
+palmer_long <- penguins1 %>% 
+  drop_na() %>%
+  pivot_longer(bill_length_mm:body_mass_g, 
+               names_to = "characteristic", 
+               values_to = "value") 
+
+palmer_long %>%
+  group_by(species) %>% 
+  # filter(characteristic != "body_mass_g") %>% 
+  ggplot(aes(value, species, fill = species)) +
+  geom_boxplot() +
+  facet_wrap(~characteristic, scales = 'free_x') +
+  theme(legend.position = 'none') +
+  scale_fill_viridis_d()
+
+
+```
+
+```{r}
+palmer_long %>%
+  group_by(species) %>% 
+  # filter(characteristic != "body_mass_g") %>% 
+  ggplot(aes(value, fill = species)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~characteristic, scales = 'free') +
+  theme(legend.position = 'none') +
+  scale_fill_viridis_d()
+```
+
